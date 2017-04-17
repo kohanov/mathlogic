@@ -19,7 +19,7 @@ void annotate(std::ifstream &in, std::ofstream &out, const expr_container &axiom
             int assumption_number = 0;
             for (int i = 0; i < assumptions.size(); i++) {
                 name_map empty;
-                if (parser::match(expression.get(), assumptions[i].get(), empty)) {
+                if (parser::match(expression.get(), assumptions[i].get(), empty, false)) {
                     assumption_number = i + 1;
                     break;
                 }

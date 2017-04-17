@@ -3,5 +3,6 @@ project(mathlogic)
 
 set(CMAKE_CXX_STANDARD 11)
 
-set(SOURCE_FILES )
-add_executable(hw1 hw1.cpp expr.h parser.cpp parser.h)
+set(SOURCE_FILES expr.h parser.cpp parser.h)
+add_executable(hw1 hw1.cpp ${SOURCE_FILES})
+add_executable(hw2 hw2.cpp ${SOURCE_FILES})
