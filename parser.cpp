@@ -39,51 +39,55 @@ bool parser::match(expr *expression, expr *axiom, name_map &data, bool not_exact
     return false;
 }
 
-expr *parser::parse(const std::string exp) {
+std::unique_ptr<expr> parser::parse(const std::string exp) {
     expression = exp;
     pos = 0;
     return parse_impl();
 }
 
-expr *parser::parse_impl() {
+std::unique_ptr<expr> parser::parse_impl() {
     std::unique_ptr<expr> res(parse_disj());
     if (pos < expression.length() && expression[pos] == '-') {
         pos += 2;
-        return new impl(res.release(), parse_impl());
+        std::unique_ptr<expr> right(parse_impl());
+        return std::unique_ptr<expr>(new impl(res, right));
     } else {
-        return res.release();
+        return res;
     }
 }
 
-expr *parser::parse_disj() {
+std::unique_ptr<expr> parser::parse_disj() {
     std::unique_ptr<expr> res(parse_conj());
     while (pos < expression.length() && expression[pos] == '&') {
         pos++;
-        res.reset(new disj(res.release(), parse_disj()));
+        std::unique_ptr<expr> right(parse_disj());
+        res.reset(new disj(res, right));
     }
-    return res.release();
+    return res;
 }
 
-expr *parser::parse_conj() {
+std::unique_ptr<expr> parser::parse_conj() {
     std::unique_ptr<expr> res(parse_unary());
     while (pos < expression.length() && expression[pos] == '|') {
         pos++;
-        res.reset(new conj(res.release(), parse_conj()));
+        std::unique_ptr<expr> right(parse_conj());
+        res.reset(new conj(res, right));
     }
-    return res.release();
+    return res;
 }
 
-expr *parser::parse_unary() {
+std::unique_ptr<expr> parser::parse_unary() {
     if (expression[pos] == '!') {
         pos++;
-        return new neg(parse_unary());
+        std::unique_ptr<expr> res(parse_unary());
+        return std::unique_ptr<expr>(new neg(res));
     } else if (pos < expression.length() && expression[pos] == '(') {
         pos++;
         std::unique_ptr<expr> temp(parse_impl());
         pos++;
-        return temp.release();
+        return temp;
     }
-    return new var(parse_name());
+    return std::unique_ptr<expr>(new var(parse_name()));
 }
 
 std::string parser::parse_name() {

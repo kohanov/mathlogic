@@ -13,17 +13,17 @@ struct parser {
 
     static bool match(expr *expression, expr *axiom, name_map &data, bool not_exact = true);
 
-    expr *parse(const std::string expression);
+    std::unique_ptr<expr> parse(const std::string expression);
 
 private:
 
-    expr *parse_impl();
+    std::unique_ptr<expr> parse_impl();
 
-    expr *parse_disj();
+    std::unique_ptr<expr> parse_disj();
 
-    expr *parse_conj();
+    std::unique_ptr<expr> parse_conj();
 
-    expr *parse_unary();
+    std::unique_ptr<expr> parse_unary();
 
     std::string parse_name();
 

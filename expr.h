@@ -35,8 +35,8 @@ struct var : unary {
 };
 
 struct neg : unary {
-    neg(expr *other) : unary(EXPR_TYPE::NEG) {
-        curr.reset(other);
+    neg(std::unique_ptr<expr> &other) : unary(EXPR_TYPE::NEG) {
+        curr = std::move(other);
     };
 
     std::string str() {
@@ -47,9 +47,10 @@ struct neg : unary {
 };
 
 struct binary : expr {
-    binary(expr *left_value, expr *right_value, EXPR_TYPE other_type) : expr(other_type){
-        left.reset(left_value);
-        right.reset(right_value);
+    binary(std::unique_ptr<expr> &left_value, std::unique_ptr<expr> &right_value, EXPR_TYPE other_type) : expr(
+            other_type) {
+        left = std::move(left_value);
+        right = std::move(right_value);
     };
 
     std::string str(const std::string &op) {
@@ -61,7 +62,8 @@ struct binary : expr {
 };
 
 struct conj : binary {
-    conj(expr *left_value, expr *right_value) : binary(left_value, right_value, EXPR_TYPE::CONJ) {};
+    conj(std::unique_ptr<expr> &left_value, std::unique_ptr<expr> &right_value) : binary(left_value, right_value,
+                                                                                         EXPR_TYPE::CONJ) {};
 
     std::string str() {
         return binary::str("&");
@@ -69,7 +71,8 @@ struct conj : binary {
 };
 
 struct disj : binary {
-    disj(expr *left_value, expr *right_value) : binary(left_value, right_value, EXPR_TYPE::DISJ) {};
+    disj(std::unique_ptr<expr> &left_value, std::unique_ptr<expr> &right_value) : binary(left_value, right_value,
+                                                                                         EXPR_TYPE::DISJ) {};
 
     std::string str() {
         return binary::str("|");
@@ -77,7 +80,8 @@ struct disj : binary {
 };
 
 struct impl : binary {
-    impl(expr *left_value, expr *right_value) : binary(left_value, right_value, EXPR_TYPE::IMPL) {};
+    impl(std::unique_ptr<expr> &left_value, std::unique_ptr<expr> &right_value) : binary(left_value, right_value,
+                                                                                         EXPR_TYPE::IMPL) {};
 
     std::string str() {
         return binary::str("->");
