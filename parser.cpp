@@ -1,105 +1,113 @@
 #include "parser.h"
-#include <assert.h>
+#include <fstream>
 
-int parser::is_axiom(expr *expression, const expr_container &axioms) {
-    for (int i = 0; i < axioms.size(); i++) {
-        name_map empty = {};
-        if (match(expression, axioms[i].get(), empty))
-            return i + 1;
+uint32_t parser::pos = 0;
+std::string parser::expression;
+
+expr_v parser::load_proof(const std::string &filename) {
+    expr_v result;
+    std::ifstream in(filename);
+    std::string s;
+    while (std::getline(in, s)) {
+        result.push_back(p_expr(parser::parse_expr(s)));
     }
-    return 0;
+    in.close();
+    return result;
 }
 
-bool parser::match(expr *expression, expr *axiom, name_map &data, bool not_exact) {
-    assert(expression != nullptr && axiom != nullptr);
-    if (axiom->type == EXPR_TYPE::VAR && (not_exact || axiom->type == expression->type)) {
-        var *temp = dynamic_cast<var *>(axiom);
-        assert(temp != nullptr);
-        auto it = data.find(axiom->str());
-        if (it != data.end()) {
-            return it->second == expression->str();
-        } else {
-            data.insert(std::make_pair(temp->str(), expression->str()));
-            return true;
-        }
-    }
-    if (axiom->type == expression->type) {
-        if (axiom->type == EXPR_TYPE::NEG) {
-            return match(dynamic_cast<neg *>(expression)->curr.get(), dynamic_cast<neg *>(axiom)->curr.get(), data,
-                         not_exact);
-        } else {
-            bool ok = match(dynamic_cast<binary *>(expression)->left.get(), dynamic_cast<binary *>(axiom)->left.get(),
-                            data, not_exact);
-            if (ok)
-                ok = match(dynamic_cast<binary *>(expression)->right.get(), dynamic_cast<binary *>(axiom)->right.get(),
-                           data, not_exact);
-            return ok;
-        }
-    }
-    return false;
-}
-
-std::unique_ptr<expr> parser::parse(const std::string exp) {
+p_expr parser::parse_expr(const std::string &exp) {
     expression = exp;
     pos = 0;
     return parse_impl();
 }
 
-std::unique_ptr<expr> parser::parse_impl() {
-    std::unique_ptr<expr> res(parse_disj());
+p_expr parser::parse_impl() {
+    p_expr res(parse_disj());
     if (pos < expression.length() && expression[pos] == '-') {
         pos += 2;
-        std::unique_ptr<expr> right(parse_impl());
-        return std::unique_ptr<expr>(new impl(res, right));
-    } else {
-        return res;
+        p_expr right(parse_impl());
+        return p_expr(new impl(res, right));
     }
+    return res;
+
 }
 
-std::unique_ptr<expr> parser::parse_disj() {
-    std::unique_ptr<expr> res(parse_conj());
-    while (pos < expression.length() && expression[pos] == '&') {
+p_expr parser::parse_disj() {
+    p_expr res(parse_conj());
+    while (pos < expression.length() && expression[pos] == '|') {
         pos++;
-        std::unique_ptr<expr> right(parse_disj());
+        p_expr right(parse_disj());
         res.reset(new disj(res, right));
     }
     return res;
 }
 
-std::unique_ptr<expr> parser::parse_conj() {
-    std::unique_ptr<expr> res(parse_unary());
-    while (pos < expression.length() && expression[pos] == '|') {
+p_expr parser::parse_conj() {
+    p_expr res(parse_unary());
+    while (pos < expression.length() && expression[pos] == '&') {
         pos++;
-        std::unique_ptr<expr> right(parse_conj());
+        p_expr right(parse_conj());
         res.reset(new conj(res, right));
     }
     return res;
 }
 
-std::unique_ptr<expr> parser::parse_unary() {
+p_expr parser::parse_unary() {
     if (expression[pos] == '!') {
         pos++;
-        std::unique_ptr<expr> res(parse_unary());
-        return std::unique_ptr<expr>(new neg(res));
-    } else if (pos < expression.length() && expression[pos] == '(') {
+        p_expr res(parse_unary());
+        return p_expr(new neg(res));
+    }
+    if (pos < expression.length() && expression[pos] == '(') {
         pos++;
-        std::unique_ptr<expr> temp(parse_impl());
+        p_expr temp(parse_impl());
         pos++;
         return temp;
     }
-    return std::unique_ptr<expr>(new var(parse_name()));
+    return p_expr(new var(parse_name()));
 }
 
 std::string parser::parse_name() {
-    int it = pos;
+    uint32_t it = pos;
     while (it < expression.length()) {
         const char c = expression[it];
-        if (isdigit(expression[it]) || isupper(expression[it]))
-            it++;
-        else
+        if (isdigit(c) == 0 && isupper(c) == 0)
             break;
+        else
+            it++;
     }
     std::string result = expression.substr(pos, it - pos);
     pos = it;
     return result;
+}
+
+p_expr parser::change(const p_expr &base, const expr_v &replace) {
+    switch (base->type) {
+        case EXPR_TYPE::VAR: {
+            auto *temp = dynamic_cast<var *>(base.get());
+            if (temp->val == "A")
+                return replace[0];
+            if (temp->val == "B")
+                return replace[1];
+            if (temp->val == "C")
+                return replace[2];
+            assert(false);
+        }
+        case EXPR_TYPE::NEG: {
+            auto *temp = dynamic_cast<neg *>(base.get());
+            return p_expr(new neg(change(temp->curr, replace)));
+        }
+        case EXPR_TYPE::DISJ: {
+            auto *temp = dynamic_cast<disj *>(base.get());
+            return p_expr(new disj(change(temp->left, replace), change(temp->right, replace)));
+        }
+        case EXPR_TYPE::CONJ: {
+            auto *temp = dynamic_cast<conj *>(base.get());
+            return p_expr(new conj(change(temp->left, replace), change(temp->right, replace)));
+        }
+        case EXPR_TYPE::IMPL: {
+            auto *temp = dynamic_cast<impl *>(base.get());
+            return p_expr(new impl(change(temp->left, replace), change(temp->right, replace)));
+        }
+    }
 }
