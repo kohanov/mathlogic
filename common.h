@@ -16,9 +16,9 @@ expr_v deduction(const expr_v &expressions, const expr_v &axioms, expr_v &assump
         auto check_pos = expr::check_expr(axioms, assumptions, good, expression);
         bool match_a = expr::match(expression.get(), assumption.get(), false);
         if (check_pos.first == 0 && check_pos.second == 0 && !match_a) {
-            std::cout << "Do not proved: " << expression->term << std::endl;
+            std::cout << "Do not proved: " << expression->str << std::endl;
             for (auto &expression2 : expressions) {
-                std::cout << expression2->term << std::endl;
+                std::cout << expression2->str << std::endl;
             }
             continue;
         }
@@ -53,7 +53,7 @@ void annotate(std::ofstream &out, const expr_v &axioms, const expr_v &expression
     std::vector<std::pair<p_expr, uint32_t >> good;
     uint32_t line = 1;
     for (auto &expression : expressions) {
-        out << "(" << line << ") " << expression->term << " (";
+        out << "(" << line << ") " << expression->str << " (";
         auto check_pos = expr::check_expr(axioms, assumptions, good, expression);
         if (check_pos.second == 0) {
             if (check_pos.first > 0) {
@@ -97,8 +97,38 @@ expr_v parse_header(std::ifstream &in) {
             break;
         pos2++;
     }
-    p_expr result(parser::parse_expr(s.substr(pos + 2)));
+    // p_expr result(parser::parse_expr(s.substr(pos + 2)));
     return assumptions;
+}
+
+expr_v parse_header(std::string& s) {
+    const uint64_t pos = s.find("|-");
+    uint64_t it = 0, balance = 0, cur = 0;
+    expr_v result;
+    while (it < pos) {
+        switch (s[cur]) {
+            case '(':
+                balance++;
+                break;
+            case ')':
+                balance--;
+                break;
+            case ',':
+                if (balance == 0) {
+                    result.emplace_back(parser::parse_expr(s.substr(it, cur - it + 1)));
+                    it = ++cur;
+                }
+                break;
+            case '|':
+                result.emplace_back(parser::parse_expr(s.substr(it, cur - it)));
+                it = pos;
+                break;
+            default:
+                break;
+        }
+        cur++;
+    }
+    return result;
 }
 
 #endif //MATHLOGIC_COMMON_H

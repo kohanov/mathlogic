@@ -21,7 +21,7 @@ int main() {
 
     expr_v result = deduction(expressions, axioms, assumptions);
     for (auto &res : result) {
-        out << res->term << std::endl;
+        out << res->str << std::endl;
     }
     in.close();
     out.close();

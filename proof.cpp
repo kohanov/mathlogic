@@ -16,14 +16,14 @@ bool proof::generate_proof(proof &proof, const expr_v &assumptions, const p_expr
     switch (expression->type) {
         case EXPR_TYPE::VAR: {
             auto *variable = dynamic_cast<var *>(expression.get());
-            p_expr temp(new var(variable->term));
+            p_expr temp(new var(variable->str));
             for (const auto &assumption : assumptions) {
-                if (assumption->term == variable->term) {
-                    proof.expressions.emplace_back(new var(variable->term));
+                if (assumption->str == variable->str) {
+                    proof.expressions.emplace_back(new var(variable->str));
                     return true;
                 }
             }
-            proof.expressions.emplace_back(new neg(p_expr(new var(variable->term))));
+            proof.expressions.emplace_back(new neg(p_expr(new var(variable->str))));
             return false;
         }
         case EXPR_TYPE::NEG: {
